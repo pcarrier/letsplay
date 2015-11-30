@@ -6,8 +6,8 @@ Mills = (() => {
         , codeForA = 'A'.codePointAt(0); // Codepoint for 'A'
 
     // Maps logical position names (A..X) to numerical position names (0..23)
-    const Pos = (() => {
-        let res = {};
+    const POS = (() => {
+        const res = {};
         for (let i = 0; i < posCount; i++) {
             res[String.fromCodePoint(codeForA + i)] = i;
         }
@@ -17,7 +17,7 @@ Mills = (() => {
     // Picks a random element from an array
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    const Stages = {
+    const STAGES = {
         PLACE: 'place',
         MOVE: 'move',
         JUMP: 'jump',
@@ -25,39 +25,37 @@ Mills = (() => {
         WHITES_WON: 'whites won'
     };
 
-    const Cells = {
+    const CELLS = {
         EMPTY: 0, // initial state, must be 0 as we use Uint8Array
         WHITES: 1,
         BLACKS: 2
     };
 
-    Cells.forPlayer = function (player) {
-        return (player === Players.WHITES) ? Cells.WHITES : Cells.BLACKS;
-    };
-
-    Cells.forOtherPlayer = function (player) {
-        return (player === Players.WHITES) ? Cells.BLACKS : Cells.WHITES;
-    };
-
-    const Players = {
+    const PLAYERS = {
         WHITES: 'whites',
         BLACKS: 'blacks'
     };
 
+    CELLS.forPlayer = (player) =>
+        (player === PLAYERS.WHITES) ? CELLS.WHITES : CELLS.BLACKS;
+
+    CELLS.forOtherPlayer = (player) =>
+        (player === PLAYERS.WHITES) ? CELLS.BLACKS : CELLS.WHITES;
+
     // List of lines, where each line is a list of 3 positions.
-    const Lines = [
+    const LINES = [
         'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', // Horizontal, top to bottom
         'AJV', 'DKS', 'GLP', 'BEH', 'QTW', 'IMR', 'FNU', 'COX'  // Vertical, left to right
     ].map((descr) =>
-        [Pos[descr[0]], Pos[descr[1]], Pos[descr[2]]]);
+        [POS[descr[0]], POS[descr[1]], POS[descr[2]]]);
 
     // Maps a position to a list of lines, where each line is a list of the 2 other positions
-    const LinesForPos = (() => {
-        let res = new Array(posCount);
+    const POS_TO_LINES = (() => {
+        const res = [];
         for (let i = 0; i < posCount; i++) {
             res[i] = [];
         }
-        Lines.map((line) => {
+        LINES.forEach((line) => {
             res[line[0]].push([line[1], line[2]]);
             res[line[1]].push([line[0], line[2]]);
             res[line[2]].push([line[0], line[1]]);
@@ -69,41 +67,41 @@ Mills = (() => {
     // I enumerate for simplicity, no need to point out that:
     // - it's transitive
     // - there are tons of symmetries
-    // - it's be cheap to build from LinesForPos
-    const Neigh = {
-        [Pos.A]: [Pos.B, Pos.J],
-        [Pos.B]: [Pos.A, Pos.C],
-        [Pos.C]: [Pos.B, Pos.O],
-        [Pos.D]: [Pos.E, Pos.K],
-        [Pos.E]: [Pos.B, Pos.D, Pos.F, Pos.H],
-        [Pos.F]: [Pos.E, Pos.N],
-        [Pos.G]: [Pos.H, Pos.L],
-        [Pos.H]: [Pos.E, Pos.G, Pos.I],
-        [Pos.I]: [Pos.H, Pos.M],
-        [Pos.J]: [Pos.A, Pos.K, Pos.V],
-        [Pos.K]: [Pos.D, Pos.J, Pos.L, Pos.S],
-        [Pos.L]: [Pos.G, Pos.K, Pos.L],
-        [Pos.M]: [Pos.I, Pos.N, Pos.R],
-        [Pos.N]: [Pos.F, Pos.M, Pos.O, Pos.U],
-        [Pos.O]: [Pos.C, Pos.N, Pos.X],
-        [Pos.P]: [Pos.L, Pos.Q],
-        [Pos.Q]: [Pos.P, Pos.R, Pos.T],
-        [Pos.R]: [Pos.M, Pos.Q],
-        [Pos.S]: [Pos.K, Pos.T],
-        [Pos.T]: [Pos.Q, Pos.S, Pos.U, Pos.W],
-        [Pos.U]: [Pos.N, Pos.T],
-        [Pos.V]: [Pos.J, Pos.W],
-        [Pos.W]: [Pos.T, Pos.V, Pos.X],
-        [Pos.X]: [Pos.O, Pos.W]
+    // - it's be cheap to build from POS_TO_LINES
+    const NEIGH = {
+        [POS.A]: [POS.B, POS.J],
+        [POS.B]: [POS.A, POS.C],
+        [POS.C]: [POS.B, POS.O],
+        [POS.D]: [POS.E, POS.K],
+        [POS.E]: [POS.B, POS.D, POS.F, POS.H],
+        [POS.F]: [POS.E, POS.N],
+        [POS.G]: [POS.H, POS.L],
+        [POS.H]: [POS.E, POS.G, POS.I],
+        [POS.I]: [POS.H, POS.M],
+        [POS.J]: [POS.A, POS.K, POS.V],
+        [POS.K]: [POS.D, POS.J, POS.L, POS.S],
+        [POS.L]: [POS.G, POS.K, POS.L],
+        [POS.M]: [POS.I, POS.N, POS.R],
+        [POS.N]: [POS.F, POS.M, POS.O, POS.U],
+        [POS.O]: [POS.C, POS.N, POS.X],
+        [POS.P]: [POS.L, POS.Q],
+        [POS.Q]: [POS.P, POS.R, POS.T],
+        [POS.R]: [POS.M, POS.Q],
+        [POS.S]: [POS.K, POS.T],
+        [POS.T]: [POS.Q, POS.S, POS.U, POS.W],
+        [POS.U]: [POS.N, POS.T],
+        [POS.V]: [POS.J, POS.W],
+        [POS.W]: [POS.T, POS.V, POS.X],
+        [POS.X]: [POS.O, POS.W]
     };
 
-    const ActionTypes = {
+    const ACTION_TYPES = {
         DROP: 0,
         MOVE: 1,
         JUMP: 2
     };
 
-    const actionRegex = /^([A-X])?([A-X])(?:x([A-X]))?$/;
+    const ACTION_RE = /^([A-X])?([A-X])(?:x([A-X]))?$/;
 
     // An action is either:
     // - a drop (no `from`),
@@ -114,13 +112,13 @@ Mills = (() => {
         constructor(to, from, eats) {
             this.to = to;
             if (from === undefined) {
-                this.type = ActionTypes.DROP;
+                this.type = ACTION_TYPES.DROP;
             } else {
                 this.from = from;
-                if (Neigh[from].indexOf(to) > -1) {
-                    this.type = ActionTypes.MOVE;
+                if (NEIGH[from].indexOf(to) > -1) {
+                    this.type = ACTION_TYPES.MOVE;
                 } else {
-                    this.type = ActionTypes.JUMP;
+                    this.type = ACTION_TYPES.JUMP;
                 }
                 if (eats !== undefined) {
                     this.eats = eats;
@@ -138,7 +136,7 @@ Mills = (() => {
         };
 
         static fromString(str) {
-            let match = str.match(actionRegex);
+            const match = str.match(ACTION_RE);
             if (match) {
                 match[2] = match[2].codePointAt(0) - codeForA;
                 if (match[1])
@@ -153,58 +151,70 @@ Mills = (() => {
     class Game {
         constructor(parent, action, validate) {
             this.failure = undefined;
-            let mills = new Uint8Array(posCount)
+            const mills = new Uint8Array(posCount);
             this.mills = mills;
 
             if (parent === undefined) {
-                this.player = Players.WHITES; // whites start; mirrors chess
-                this.stage = Stages.PLACE;
+                this.player = PLAYERS.WHITES; // whites start; mirrors chess
+                this.stage = STAGES.PLACE;
                 this.actions = [];
                 this.board = new Uint8Array(posCount);
             } else {
                 this.stage = parent.stage;
                 this.actions = parent.actions.slice();
-                let board = parent.board.slice();
+                const board = parent.board.slice();
                 this.board = board;
                 if (validate)
                     this.failure = this._failureForAction(action, parent.player);
                 if (!this.failure)
                     this._applyAction(action, parent.player);
 
-                Lines.forEach((line) => {
-                    let a = line[0], b = line[1], c = line[2];
-                    if (board[a] === Cells.BLACKS && board[b] === Cells.BLACKS && board[c] === Cells.BLACKS) {
-                        mills[a] = Cells.BLACKS;
-                        mills[b] = Cells.BLACKS;
-                        mills[c] = Cells.BLACKS;
-                    } else if (board[a] === Cells.WHITES && board[b] === Cells.WHITES && board[c] === Cells.WHITES) {
-                        mills[a] = Cells.WHITES;
-                        mills[b] = Cells.WHITES;
-                        mills[c] = Cells.WHITES;
+                LINES.forEach((line) => {
+                    const a = line[0], b = line[1], c = line[2];
+                    if (board[a] === CELLS.BLACKS && board[b] === CELLS.BLACKS && board[c] === CELLS.BLACKS) {
+                        mills[a] = CELLS.BLACKS;
+                        mills[b] = CELLS.BLACKS;
+                        mills[c] = CELLS.BLACKS;
+                    } else if (board[a] === CELLS.WHITES && board[b] === CELLS.WHITES && board[c] === CELLS.WHITES) {
+                        mills[a] = CELLS.WHITES;
+                        mills[b] = CELLS.WHITES;
+                        mills[c] = CELLS.WHITES;
                     }
                 });
 
-                this.player = (parent.player === Players.WHITES) ? Players.BLACKS : Players.WHITES;
+                this.player = (parent.player === PLAYERS.WHITES) ? PLAYERS.BLACKS : PLAYERS.WHITES;
             }
             Object.freeze(this);
         };
 
         toString() {
-            let board = this.board;
+            const board = this.board;
             let res;
+
             switch (this.stage) {
-                case Stages.BLACKS_WON:
-                case Stages.WHITES_WON:
+                case STAGES.BLACKS_WON:
+                case STAGES.WHITES_WON:
                     res = this.stage;
                     break;
                 default:
-                    res = this.player === Players.WHITES ? 'whites play' : 'blacks play';
+                    res = this.player === PLAYERS.WHITES ? 'whites play' : 'blacks play';
             }
 
             if (this.failure)
                 res = res.concat('\nFailure: ', this.failure);
 
             res = res.concat('\nActions: ', this.actions.join(','));
+
+            const cp = (cell) => {
+                switch (cell) {
+                    case CELLS.BLACKS:
+                        return 'B';
+                    case CELLS.WHITES:
+                        return 'W';
+                    default:
+                        return '+';
+                }
+            };
 
             return res.concat('\n',
                 cp(board[0]), '-----', cp(board[1]), '-----', cp(board[2]), '\n| ',
@@ -214,47 +224,35 @@ Mills = (() => {
                 cp(board[15]), '-', cp(board[16]), '-', cp(board[17]), ' | |\n| ',
                 cp(board[18]), '---', cp(board[19]), '---', cp(board[20]), ' |\n',
                 cp(board[21]), '-----', cp(board[22]), '-----', cp(board[23]));
-
-            // Cell print
-            function cp(cell) {
-                switch (cell) {
-                    case Cells.BLACKS:
-                        return 'B';
-                    case Cells.WHITES:
-                        return 'W';
-                    default:
-                        return '+';
-                }
-            }
         };
 
         // Applies a trusted action
         _applyAction(action, player) {
-            let board = this.board;
+            const board = this.board;
 
-            board[action.to] = Cells.forPlayer(player);
+            board[action.to] = CELLS.forPlayer(player);
             if (action.from !== undefined)
-                board[action.from] = Cells.EMPTY;
+                board[action.from] = CELLS.EMPTY;
             if (action.eats !== undefined)
-                board[action.eats] = Cells.EMPTY;
+                board[action.eats] = CELLS.EMPTY;
 
             this.actions.push(action);
 
             if (this.actions.length < 2 * pieceCount) {
-                this.stage = Stages.PLACE;
+                this.stage = STAGES.PLACE;
             } else {
                 let blacksCount = 0, whitesCount = 0, blacksCanMove = false, whitesCanMove = false;
                 board.forEach((cell, pos) => {
                     switch (cell) {
-                        case Cells.BLACKS:
+                        case CELLS.BLACKS:
                             blacksCount++;
                             if (!blacksCanMove)
-                                blacksCanMove = !!Neigh[pos].find((pos) => board[pos] === Cells.EMPTY);
+                                blacksCanMove = !!NEIGH[pos].find((pos) => board[pos] === CELLS.EMPTY);
                             break;
-                        case Cells.WHITES:
+                        case CELLS.WHITES:
                             whitesCount++;
                             if (!whitesCanMove)
-                                whitesCanMove = !!Neigh[pos].find((pos) => board[pos] === Cells.EMPTY);
+                                whitesCanMove = !!NEIGH[pos].find((pos) => board[pos] === CELLS.EMPTY);
                             break;
                     }
                 });
@@ -265,24 +263,24 @@ Mills = (() => {
                     blacksCanMove = true;
 
                 if (blacksCount <= 2 || (!blacksCanMove && blacksCount != 3)) {
-                    this.stage = Stages.WHITES_WON;
+                    this.stage = STAGES.WHITES_WON;
                 } else if (whitesCount <= 2 || (!whitesCanMove && whitesCount != 3)) {
-                    this.stage = Stages.BLACKS_WON;
+                    this.stage = STAGES.BLACKS_WON;
                 } else {
-                    if (player === Players.WHITES && blacksCount === 3)
-                        this.stage = Stages.JUMP;
-                    else if (player === Players.BLACKS && whitesCount === 3)
-                        this.stage = Stages.JUMP;
+                    if (player === PLAYERS.WHITES && blacksCount === 3)
+                        this.stage = STAGES.JUMP;
+                    else if (player === PLAYERS.BLACKS && whitesCount === 3)
+                        this.stage = STAGES.JUMP;
                     else
-                        this.stage = Stages.MOVE;
+                        this.stage = STAGES.MOVE;
                 }
             }
         };
 
         // An action eats iff it creates a line of 3 cells when there wasn't one before.
         _canEat(action, player) {
-            let neededInLine = Cells.forPlayer(player);
-            return !!LinesForPos[action.to].find((others) =>
+            const neededInLine = CELLS.forPlayer(player);
+            return !!POS_TO_LINES[action.to].find((others) =>
             others[0] != action.from &&
             others[1] != action.from &&
             this.board[others[0]] === neededInLine &&
@@ -291,26 +289,27 @@ Mills = (() => {
 
         // Returns a message explaining why a move is illegal, or undefined if it's legal
         _failureForAction(action, player) {
-            if (this.stage === Stages.WHITES_WON || this.stage === Stages.BLACKS_WON)
+            if (this.stage === STAGES.WHITES_WON || this.stage === STAGES.BLACKS_WON)
                 return 'game over';
 
-            if (this.stage === Stages.PLACE) {
-                if (action.type !== ActionTypes.DROP)
+            if (this.stage === STAGES.PLACE) {
+                if (action.type !== ACTION_TYPES.DROP)
                     return 'should be a drop';
             } else {
-                if (action.type === ActionTypes.DROP)
+                if (action.type === ACTION_TYPES.DROP)
                     return 'drop not allowed';
-                else if (action.type === ActionTypes.JUMP && this.stage === Stages.MOVE)
+                else if (action.type === ACTION_TYPES.JUMP && this.stage === STAGES.MOVE)
                     return 'jump not allowed';
             }
-            if (this.board[action.to] !== Cells.EMPTY) {
+            if (this.board[action.to] !== CELLS.EMPTY) {
                 return 'destination is already taken';
             }
-            let otherPlayCell = Cells.forOtherPlayer(player);
+
+            const otherPlayCell = CELLS.forOtherPlayer(player);
 
             if (action.from !== undefined) {
                 switch (this.board[action.from]) {
-                    case Cells.EMPTY:
+                    case CELLS.EMPTY:
                         return 'no piece there';
                     case otherPlayCell:
                         return 'not your piece';
@@ -322,21 +321,21 @@ Mills = (() => {
                     return 'must eat';
                 if (this.board[action.eats] !== otherPlayCell)
                     return 'must eat a piece from your opponent';
-                if (this.mills[action.eats] !== Cells.EMPTY &&
+                if (this.mills[action.eats] !== CELLS.EMPTY &&
                     this.board.find((cell, pos) =>
-                    cell === otherPlayCell && this.mills[pos] === Cells.EMPTY))
+                    cell === otherPlayCell && this.mills[pos] === CELLS.EMPTY))
                     return 'cannot eat from a mill when the opponent has pieces outside of a mill';
             }
         };
 
         // All "eating" variants of a given action.
         _withEat(action, player) {
-            const ifOnlyMills = [], ifNotOnlyMills = [], eatable = Cells.forOtherPlayer(player);
+            const ifOnlyMills = [], ifNotOnlyMills = [], eatable = CELLS.forOtherPlayer(player);
             this.board.forEach((cell, pos) => {
                 if (cell === eatable) {
-                    let eat = new Action(action.to, action.from, pos);
+                    const eat = new Action(action.to, action.from, pos);
                     ifOnlyMills.push(eat);
-                    if (this.mills[pos] === Cells.EMPTY) {
+                    if (this.mills[pos] === CELLS.EMPTY) {
                         ifNotOnlyMills.push(eat);
                     }
                 }
@@ -346,7 +345,7 @@ Mills = (() => {
 
         _finish(log, lambda) {
             let res = this;
-            while (res.stage !== Stages.BLACKS_WON && res.stage !== Stages.WHITES_WON) {
+            while (res.stage !== STAGES.BLACKS_WON && res.stage !== STAGES.WHITES_WON) {
                 res = new Game(res, lambda(res));
                 if (log) {
                     console.log(res.toString());
@@ -358,12 +357,12 @@ Mills = (() => {
         possibleMoves() {
             const player = this.player, stage = this.stage, board = this.board;
 
-            if (stage === Stages.WHITES_WON || stage === Stages.BLACKS_WON)
+            if (stage === STAGES.WHITES_WON || stage === STAGES.BLACKS_WON)
                 return [];
-            if (stage === Stages.PLACE) {
+            if (stage === STAGES.PLACE) {
                 const placements = [];
                 board.forEach((cell, pos) => {
-                    if (cell === Cells.EMPTY) {
+                    if (cell === CELLS.EMPTY) {
                         const action = new Action(pos);
                         if (this._canEat(action, player)) {
                             this._withEat(action, player).forEach((act) => placements.push(act));
@@ -376,10 +375,10 @@ Mills = (() => {
             }
 
             // We'll move or jump, let's enumerate positions for various piece types at once
-            const ourCell = Cells.forPlayer(this.player), ours = [], theirs = [], empty = [];
+            const ourCell = CELLS.forPlayer(this.player), ours = [], theirs = [], empty = [];
             board.forEach((cell, pos) => {
                 switch (cell) {
-                    case Cells.EMPTY:
+                    case CELLS.EMPTY:
                         empty.push(pos);
                         break;
                     case ourCell:
@@ -392,7 +391,7 @@ Mills = (() => {
 
             const res = [];
             ours.forEach((from) => {
-                if (this.stage === Stages.JUMP) {
+                if (this.stage === STAGES.JUMP) {
                     empty.forEach((to) => {
                         const jump = new Action(to, from);
                         if (this._canEat(jump, player))
@@ -401,8 +400,8 @@ Mills = (() => {
                             res.push(jump);
                     });
                 } else {
-                    Neigh[from].forEach((to) => {
-                        if (board[to] === Cells.EMPTY) {
+                    NEIGH[from].forEach((to) => {
+                        if (board[to] === CELLS.EMPTY) {
                             const move = new Action(to, from);
                             if (this._canEat(move, player))
                                 this._withEat(move, player).forEach((act) => res.push(act));
@@ -424,26 +423,22 @@ Mills = (() => {
         };
 
         finishRandomly(log) {
-            return this._finish(log, randomForGame);
-            function randomForGame(game) {
-                return pickRandom(game.possibleMoves());
-            }
+            return this._finish(log, (game) => pickRandom(game.possibleMoves()));
         };
 
         finishSemiRandomly(log) {
-            return this._finish(log, eatingFirstForGame);
-            function eatingFirstForGame(game) {
-                let moves = game.possibleMoves();
-                let eating = moves.find((move) => move.eats);
+            return this._finish(log, (game) => {
+                const moves = game.possibleMoves()
+                    , eating = moves.find((move) => move.eats);
                 if (eating) return eating;
                 return pickRandom(moves);
-            }
+            });
         };
     }
 
     return ({
         newGame: () => new Game(),
-        quickLoad: function (str) {
+        quickLoad: (str) => {
             let game = new Game();
             if (str)
                 str.split(',', false).forEach((action) => {
@@ -451,9 +446,9 @@ Mills = (() => {
                 });
             return game;
         },
-        Stages: Stages,
-        Cells: Cells,
-        Players: Players,
-        Pos: Pos
+        STAGES: STAGES,
+        CELLS: CELLS,
+        PLAYERS: PLAYERS,
+        POS: POS
     });
 })();
