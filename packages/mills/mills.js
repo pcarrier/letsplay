@@ -8,8 +8,8 @@ Mills = (() => {
     // Maps logical position names (A..X) to numerical position names (0..23)
     const POS = (() => {
         const res = {};
-        for (let i = 0; i < posCount; i++) {
-            res[String.fromCodePoint(codeForA + i)] = i;
+        for (let pos = 0; pos < posCount; pos++) {
+            res[String.fromCodePoint(codeForA + pos)] = pos;
         }
         return res;
     })();
@@ -52,14 +52,15 @@ Mills = (() => {
     // Maps a position to a list of lines, where each line is a list of the 2 other positions
     const POS_TO_LINES = (() => {
         const res = [];
-        for (let i = 0; i < posCount; i++) {
-            res[i] = [];
+        for (let pos = 0; pos < posCount; pos++) {
+            res[pos] = [];
         }
-        LINES.forEach((line) => {
+        for (let i = 0; i < LINES.length; i++) {
+            const line = LINES[i];
             res[line[0]].push([line[1], line[2]]);
             res[line[1]].push([line[0], line[2]]);
             res[line[2]].push([line[0], line[1]]);
-        });
+        }
         return res;
     })();
 
@@ -68,32 +69,32 @@ Mills = (() => {
     // - it's transitive
     // - there are tons of symmetries
     // - it's be cheap to build from POS_TO_LINES
-    const NEIGH = {
-        [POS.A]: [POS.B, POS.J],
-        [POS.B]: [POS.A, POS.C],
-        [POS.C]: [POS.B, POS.O],
-        [POS.D]: [POS.E, POS.K],
-        [POS.E]: [POS.B, POS.D, POS.F, POS.H],
-        [POS.F]: [POS.E, POS.N],
-        [POS.G]: [POS.H, POS.L],
-        [POS.H]: [POS.E, POS.G, POS.I],
-        [POS.I]: [POS.H, POS.M],
-        [POS.J]: [POS.A, POS.K, POS.V],
-        [POS.K]: [POS.D, POS.J, POS.L, POS.S],
-        [POS.L]: [POS.G, POS.K, POS.L],
-        [POS.M]: [POS.I, POS.N, POS.R],
-        [POS.N]: [POS.F, POS.M, POS.O, POS.U],
-        [POS.O]: [POS.C, POS.N, POS.X],
-        [POS.P]: [POS.L, POS.Q],
-        [POS.Q]: [POS.P, POS.R, POS.T],
-        [POS.R]: [POS.M, POS.Q],
-        [POS.S]: [POS.K, POS.T],
-        [POS.T]: [POS.Q, POS.S, POS.U, POS.W],
-        [POS.U]: [POS.N, POS.T],
-        [POS.V]: [POS.J, POS.W],
-        [POS.W]: [POS.T, POS.V, POS.X],
-        [POS.X]: [POS.O, POS.W]
-    };
+    const NEIGH = [
+        /*[POS.A]:*/ [POS.B, POS.J],
+        /*[POS.B]:*/ [POS.A, POS.C],
+        /*[POS.C]:*/ [POS.B, POS.O],
+        /*[POS.D]:*/ [POS.E, POS.K],
+        /*[POS.E]:*/ [POS.B, POS.D, POS.F, POS.H],
+        /*[POS.F]:*/ [POS.E, POS.N],
+        /*[POS.G]:*/ [POS.H, POS.L],
+        /*[POS.H]:*/ [POS.E, POS.G, POS.I],
+        /*[POS.I]:*/ [POS.H, POS.M],
+        /*[POS.J]:*/ [POS.A, POS.K, POS.V],
+        /*[POS.K]:*/ [POS.D, POS.J, POS.L, POS.S],
+        /*[POS.L]:*/ [POS.G, POS.K, POS.L],
+        /*[POS.M]:*/ [POS.I, POS.N, POS.R],
+        /*[POS.N]:*/ [POS.F, POS.M, POS.O, POS.U],
+        /*[POS.O]:*/ [POS.C, POS.N, POS.X],
+        /*[POS.P]:*/ [POS.L, POS.Q],
+        /*[POS.Q]:*/ [POS.P, POS.R, POS.T],
+        /*[POS.R]:*/ [POS.M, POS.Q],
+        /*[POS.S]:*/ [POS.K, POS.T],
+        /*[POS.T]:*/ [POS.Q, POS.S, POS.U, POS.W],
+        /*[POS.U]:*/ [POS.N, POS.T],
+        /*[POS.V]:*/ [POS.J, POS.W],
+        /*[POS.W]:*/ [POS.T, POS.V, POS.X],
+        /*[POS.X]:*/ [POS.O, POS.W]
+    ];
 
     const ACTION_TYPES = {
         DROP: 0,
@@ -111,6 +112,9 @@ Mills = (() => {
     class Action {
         constructor(to, from, eats) {
             this.to = to;
+            if (eats !== undefined) {
+                this.eats = eats;
+            }
             if (from === undefined) {
                 this.type = ACTION_TYPES.DROP;
             } else {
@@ -119,9 +123,6 @@ Mills = (() => {
                     this.type = ACTION_TYPES.MOVE;
                 } else {
                     this.type = ACTION_TYPES.JUMP;
-                }
-                if (eats !== undefined) {
-                    this.eats = eats;
                 }
             }
         };
@@ -150,38 +151,27 @@ Mills = (() => {
 
     class Game {
         constructor(parent, action, validate) {
-            this.failure = undefined;
-            const mills = new Uint8Array(posCount);
-            this.mills = mills;
-
             if (parent === undefined) {
                 this.player = PLAYERS.WHITES; // whites start; mirrors chess
                 this.stage = STAGES.PLACE;
                 this.actions = [];
                 this.board = new Uint8Array(posCount);
+                this.mills = new Uint8Array(posCount);
+                this.failure = undefined;
             } else {
                 this.stage = parent.stage;
                 this.actions = parent.actions.slice();
-                const board = parent.board.slice();
-                this.board = board;
-                if (validate)
-                    this.failure = this._failureForAction(action, parent.player);
-                if (!this.failure)
-                    this._applyAction(action, parent.player);
+                this.board = parent.board.slice();
+                this.mills = parent.mills;
 
-                LINES.forEach((line) => {
-                    const a = line[0], b = line[1], c = line[2];
-                    if (board[a] === CELLS.BLACKS && board[b] === CELLS.BLACKS && board[c] === CELLS.BLACKS) {
-                        mills[a] = CELLS.BLACKS;
-                        mills[b] = CELLS.BLACKS;
-                        mills[c] = CELLS.BLACKS;
-                    } else if (board[a] === CELLS.WHITES && board[b] === CELLS.WHITES && board[c] === CELLS.WHITES) {
-                        mills[a] = CELLS.WHITES;
-                        mills[b] = CELLS.WHITES;
-                        mills[c] = CELLS.WHITES;
-                    }
-                });
-
+                if (parent.failure !== undefined) {
+                    this.failure = 'parent failed (skipping action)';
+                } else {
+                    if (validate === undefined || validate)
+                        this.failure = this._failureForAction(action, parent.player);
+                    if (!this.failure)
+                        this._applyAction(action, parent.player);
+                }
                 this.player = (parent.player === PLAYERS.WHITES) ? PLAYERS.BLACKS : PLAYERS.WHITES;
             }
             Object.freeze(this);
@@ -197,11 +187,11 @@ Mills = (() => {
                     res = this.stage;
                     break;
                 default:
-                    res = this.player === PLAYERS.WHITES ? 'whites play' : 'blacks play';
+                    if (this.failure)
+                        res = 'Failure: '.concat(this.failure);
+                    else
+                        res = this.player === PLAYERS.WHITES ? 'Whites play' : 'Blacks play';
             }
-
-            if (this.failure)
-                res = res.concat('\nFailure: ', this.failure);
 
             res = res.concat('\nActions: ', this.actions.join(','));
 
@@ -241,21 +231,38 @@ Mills = (() => {
             if (this.actions.length < 2 * pieceCount) {
                 this.stage = STAGES.PLACE;
             } else {
-                let blacksCount = 0, whitesCount = 0, blacksCanMove = false, whitesCanMove = false;
-                board.forEach((cell, pos) => {
-                    switch (cell) {
+                let blacksCount = 0
+                    , whitesCount = 0
+                    , blacksCanMove = false
+                    , whitesCanMove = false;
+                for (let pos = 0; pos < posCount; pos++) {
+                    switch (board[pos]) {
                         case CELLS.BLACKS:
                             blacksCount++;
-                            if (!blacksCanMove)
-                                blacksCanMove = !!NEIGH[pos].find((pos) => board[pos] === CELLS.EMPTY);
+                            if (!blacksCanMove) {
+                                const neighbors = NEIGH[pos];
+                                for (let n = 0; n < neighbors.length; n++) {
+                                    if (board[neighbors[n]] === CELLS.EMPTY) {
+                                        blacksCanMove = true;
+                                        break;
+                                    }
+                                }
+                            }
                             break;
                         case CELLS.WHITES:
                             whitesCount++;
-                            if (!whitesCanMove)
-                                whitesCanMove = !!NEIGH[pos].find((pos) => board[pos] === CELLS.EMPTY);
+                            if (!whitesCanMove) {
+                                const neighbors = NEIGH[pos];
+                                for (let n = 0; n < neighbors.length; n++) {
+                                    if (board[neighbors[n]] === CELLS.EMPTY) {
+                                        whitesCanMove = true;
+                                        break;
+                                    }
+                                }
+                            }
                             break;
                     }
-                });
+                }
 
                 if (whitesCount === 3)
                     whitesCanMove = true;
@@ -275,16 +282,36 @@ Mills = (() => {
                         this.stage = STAGES.MOVE;
                 }
             }
+
+            this.mills = new Uint8Array(posCount);
+            for (let i = 0; i < LINES.length; i++) {
+                const line = LINES[i]
+                    , a = line[0]
+                    , b = line[1]
+                    , c = line[2];
+                if (board[a] === CELLS.BLACKS && board[b] === CELLS.BLACKS && board[c] === CELLS.BLACKS) {
+                    this.mills[a] = this.mills[b] = this.mills[c] = CELLS.BLACKS;
+                } else if (board[a] === CELLS.WHITES && board[b] === CELLS.WHITES && board[c] === CELLS.WHITES) {
+                    this.mills[a] = this.mills[b] = this.mills[c] = CELLS.WHITES;
+                }
+            }
         };
 
         // An action eats iff it creates a line of 3 cells when there wasn't one before.
         _canEat(action, player) {
-            const neededInLine = CELLS.forPlayer(player);
-            return !!POS_TO_LINES[action.to].find((others) =>
-            others[0] != action.from &&
-            others[1] != action.from &&
-            this.board[others[0]] === neededInLine &&
-            this.board[others[1]] === neededInLine);
+            const neededInLine = CELLS.forPlayer(player)
+                , lines = POS_TO_LINES[action.to];
+            for (let i = 0; i < lines.length; i++) {
+                const others = lines[i]
+                    , a = others[0]
+                    , b = others[1];
+                if (a !== action.from &&
+                    b !== action.from &&
+                    this.board[a] === neededInLine &&
+                    this.board[b] === neededInLine)
+                    return true;
+            }
+            return false;
         };
 
         // Returns a message explaining why a move is illegal, or undefined if it's legal
@@ -321,32 +348,38 @@ Mills = (() => {
                     return 'must eat';
                 if (this.board[action.eats] !== otherPlayCell)
                     return 'must eat a piece from your opponent';
-                if (this.mills[action.eats] !== CELLS.EMPTY &&
-                    this.board.find((cell, pos) =>
-                    cell === otherPlayCell && this.mills[pos] === CELLS.EMPTY))
-                    return 'cannot eat from a mill when the opponent has pieces outside of a mill';
+                if (this.mills[action.eats] !== CELLS.EMPTY) {
+                    for (let pos = 0; pos < posCount; pos++) {
+                        if (this.board[pos] === otherPlayCell && this.mills[pos] === CELLS.EMPTY) {
+                            return 'cannot eat from a mill when the opponent has pieces outside of a mill';
+                        }
+                    }
+                }
             }
         };
 
         // All "eating" variants of a given action.
         _withEat(action, player) {
-            const ifOnlyMills = [], ifNotOnlyMills = [], eatable = CELLS.forOtherPlayer(player);
-            this.board.forEach((cell, pos) => {
-                if (cell === eatable) {
+            const ifOnlyMills = []
+                , ifNotOnlyMills = []
+                , eatable = CELLS.forOtherPlayer(player)
+                , board = this.board;
+            for (let pos = 0; pos < posCount; pos++) {
+                if (board[pos] === eatable) {
                     const eat = new Action(action.to, action.from, pos);
                     ifOnlyMills.push(eat);
                     if (this.mills[pos] === CELLS.EMPTY) {
                         ifNotOnlyMills.push(eat);
                     }
                 }
-            });
+            }
             return (ifNotOnlyMills.length > 0) ? ifNotOnlyMills : ifOnlyMills;
         };
 
-        _finish(log, lambda) {
+        _finish(log, lambda, validate) {
             let res = this;
             while (res.stage !== STAGES.BLACKS_WON && res.stage !== STAGES.WHITES_WON) {
-                res = new Game(res, lambda(res));
+                res = new Game(res, lambda(res), validate);
                 if (log) {
                     console.log(res.toString());
                 }
@@ -361,23 +394,25 @@ Mills = (() => {
                 return [];
             if (stage === STAGES.PLACE) {
                 const placements = [];
-                board.forEach((cell, pos) => {
-                    if (cell === CELLS.EMPTY) {
+                for (let pos = 0; pos < posCount; pos++) {
+                    if (board[pos] === CELLS.EMPTY) {
                         const action = new Action(pos);
                         if (this._canEat(action, player)) {
-                            this._withEat(action, player).forEach((act) => placements.push(act));
+                            Array.prototype.push.apply(placements, this._withEat(action, player));
                         } else {
                             placements.push(action);
                         }
                     }
-                });
+                }
                 return placements;
             }
 
             // We'll move or jump, let's enumerate positions for various piece types at once
+
             const ourCell = CELLS.forPlayer(this.player), ours = [], theirs = [], empty = [];
-            board.forEach((cell, pos) => {
-                switch (cell) {
+
+            for (let pos = 0; pos < posCount; pos++) {
+                switch (board[pos]) {
                     case CELLS.EMPTY:
                         empty.push(pos);
                         break;
@@ -387,38 +422,43 @@ Mills = (() => {
                     default:
                         theirs.push(pos);
                 }
-            });
+            }
 
             const res = [];
-            ours.forEach((from) => {
+
+            for (let i = 0; i < ours.length; i++) {
+                const from = ours[i];
+
                 if (this.stage === STAGES.JUMP) {
-                    empty.forEach((to) => {
-                        const jump = new Action(to, from);
-                        if (this._canEat(jump, player))
-                            this._withEat(jump, player).forEach((act) => res.push(act));
-                        else
+                    for (let j = 0; j < empty.length; j++) {
+                        const jump = new Action(empty[j], from);
+                        if (this._canEat(jump, player)) {
+                            Array.prototype.push.apply(res, this._withEat(jump, player));
+                        } else {
                             res.push(jump);
-                    });
+                        }
+                    }
                 } else {
-                    NEIGH[from].forEach((to) => {
+                    const neighbors = NEIGH[from];
+                    for (let j = 0; j < neighbors.length; j++) {
+                        const to = neighbors[j];
                         if (board[to] === CELLS.EMPTY) {
                             const move = new Action(to, from);
-                            if (this._canEat(move, player))
-                                this._withEat(move, player).forEach((act) => res.push(act));
-                            else
+                            if (this._canEat(move, player)) {
+                                Array.prototype.push.apply(res, this._withEat(move, player));
+                            } else {
                                 res.push(move);
+                            }
                         }
-                    });
+                    }
                 }
-            });
+            }
             return res;
         };
 
         after(action, validate) {
             if (typeof action === 'string')
                 action = Action.fromString(action);
-            if (validate === undefined)
-                validate = true;
             return new Game(this, action, validate);
         };
 
@@ -428,9 +468,12 @@ Mills = (() => {
 
         finishSemiRandomly(log) {
             return this._finish(log, (game) => {
-                const moves = game.possibleMoves()
-                    , eating = moves.find((move) => move.eats);
-                if (eating) return eating;
+                const moves = game.possibleMoves();
+                for (let i = 0; i < moves.length; i++) {
+                    const move = moves[i];
+                    if (move.eats)
+                        return move;
+                }
                 return pickRandom(moves);
             });
         };
@@ -440,10 +483,12 @@ Mills = (() => {
         newGame: () => new Game(),
         quickLoad: (str) => {
             let game = new Game();
-            if (str)
-                str.split(',', false).forEach((action) => {
-                    game = game.after(action);
-                });
+            const parts = str.split(',');
+            for (let i = 0; i < parts.length; i++) {
+                game = game.after(parts[i], false);
+                if (game.failure)
+                    return game;
+            }
             return game;
         },
         STAGES: STAGES,
