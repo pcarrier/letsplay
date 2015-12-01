@@ -3,16 +3,7 @@ Mills = (() => {
 
     const posCount = 24 // Number of positions on the board
         , pieceCount = 9 // Number of pieces for each player
-        , codeForA = 'A'.codePointAt(0); // Codepoint for 'A'
-
-    // Maps logical position names (A..X) to numerical position names (0..23)
-    const POS = (() => {
-        const res = {};
-        for (let pos = 0; pos < posCount; pos++) {
-            res[String.fromCodePoint(codeForA + pos)] = pos;
-        }
-        return res;
-    })();
+        , codeForA = 'A'.codePointAt(0);
 
     // Picks a random element from an array
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -36,6 +27,12 @@ Mills = (() => {
         BLACKS: 'blacks'
     };
 
+    CELLS.forPlayer = (player) =>
+        (player === PLAYERS.WHITES) ? CELLS.WHITES : CELLS.BLACKS;
+
+    CELLS.forOtherPlayer = (player) =>
+        (player === PLAYERS.WHITES) ? CELLS.BLACKS : CELLS.WHITES;
+
     const FAILURES = {
         GAME_OVER: 'game is already over',
         SHOULD_DROP: 'should be a drop',
@@ -49,11 +46,14 @@ Mills = (() => {
         CANNOT_EAT_FROM_MILL: 'cannot eat from a mill when the opponent has pieces outside of a mill'
     }
 
-    CELLS.forPlayer = (player) =>
-        (player === PLAYERS.WHITES) ? CELLS.WHITES : CELLS.BLACKS;
-
-    CELLS.forOtherPlayer = (player) =>
-        (player === PLAYERS.WHITES) ? CELLS.BLACKS : CELLS.WHITES;
+    // Maps logical position names (A..X) to numerical positions (0..23)
+    const POS = (() => {
+        const res = {};
+        for (let pos = 0; pos < posCount; pos++) {
+            res[String.fromCodePoint(codeForA + pos)] = pos;
+        }
+        return res;
+    })();
 
     // List of lines, where each line is a list of 3 positions.
     const LINES = [
@@ -507,7 +507,6 @@ Mills = (() => {
         STAGES: STAGES,
         CELLS: CELLS,
         PLAYERS: PLAYERS,
-        POS: POS,
         FAILURES: FAILURES
     });
 })();
