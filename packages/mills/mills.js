@@ -36,6 +36,19 @@ Mills = (() => {
         BLACKS: 'blacks'
     };
 
+    const FAILURES = {
+        GAME_OVER: 'game is already over',
+        SHOULD_DROP: 'should be a drop',
+        CANNOT_DROP: 'drop not allowed',
+        CANNOT_JUMP: 'jump not allowed',
+        DEST_IS_NOT_EMPTY: 'destination is already taken',
+        SOURCE_IS_EMPTY: 'no piece there',
+        SOURCE_IS_OPPONENT: 'not your piece',
+        MUST_EAT: 'must eat',
+        MUST_EAT_FROM_OPPONENT: 'must eat a piece from your opponent',
+        CANNOT_EAT_FROM_MILL: 'cannot eat from a mill when the opponent has pieces outside of a mill'
+    }
+
     CELLS.forPlayer = (player) =>
         (player === PLAYERS.WHITES) ? CELLS.WHITES : CELLS.BLACKS;
 
@@ -317,19 +330,19 @@ Mills = (() => {
         // Returns a message explaining why a move is illegal, or undefined if it's legal
         _failureForAction(action, player) {
             if (this.stage === STAGES.WHITES_WON || this.stage === STAGES.BLACKS_WON)
-                return 'game over';
+                return FAILURES.GAME_OVER;
 
             if (this.stage === STAGES.PLACE) {
                 if (action.type !== ACTION_TYPES.DROP)
-                    return 'should be a drop';
+                    return FAILURES.SHOULD_DROP;
             } else {
                 if (action.type === ACTION_TYPES.DROP)
-                    return 'drop not allowed';
+                    return FAILURES.CANNOT_DROP;
                 else if (action.type === ACTION_TYPES.JUMP && this.stage === STAGES.MOVE)
-                    return 'jump not allowed';
+                    return FAILURES.CANNOT_JUMP;
             }
             if (this.board[action.to] !== CELLS.EMPTY) {
-                return 'destination is already taken';
+                return FAILURES.DEST_IS_NOT_EMPTY;
             }
 
             const otherPlayCell = CELLS.forOtherPlayer(player);
@@ -337,21 +350,21 @@ Mills = (() => {
             if (action.from !== undefined) {
                 switch (this.board[action.from]) {
                     case CELLS.EMPTY:
-                        return 'no piece there';
+                        return FAILURES.SOURCE_IS_EMPTY;
                     case otherPlayCell:
-                        return 'not your piece';
+                        return FAILURES.SOURCE_IS_OPPONENT;
                 }
             }
 
             if (this._canEat(action, player)) {
                 if (action.eats === undefined)
-                    return 'must eat';
+                    return FAILURES.MUST_EAT;
                 if (this.board[action.eats] !== otherPlayCell)
-                    return 'must eat a piece from your opponent';
+                    return FAILURES.MUST_EAT_FROM_OPPONENT;
                 if (this.mills[action.eats] !== CELLS.EMPTY) {
                     for (let pos = 0; pos < posCount; pos++) {
                         if (this.board[pos] === otherPlayCell && this.mills[pos] === CELLS.EMPTY) {
-                            return 'cannot eat from a mill when the opponent has pieces outside of a mill';
+                            return FAILURES.CANNOT_EAT_FROM_MILL;
                         }
                     }
                 }
@@ -494,6 +507,7 @@ Mills = (() => {
         STAGES: STAGES,
         CELLS: CELLS,
         PLAYERS: PLAYERS,
-        POS: POS
+        POS: POS,
+        FAILURES: FAILURES
     });
 })();
