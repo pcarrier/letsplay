@@ -68,7 +68,8 @@ Mills = (() => {
         for (let pos = 0; pos < posCount; pos++) {
             res[pos] = [];
         }
-        for (let i = 0; i < LINES.length; i++) {
+        const imax = LINES.length;
+        for (let i = 0; i < imax; i++) {
             const line = LINES[i];
             res[line[0]].push([line[1], line[2]]);
             res[line[1]].push([line[0], line[2]]);
@@ -124,27 +125,29 @@ Mills = (() => {
     // Game.prototype.canEat establishes whether a given action should eat.
     class Action {
         constructor(to, from, eats) {
+            from = from === undefined ? -1 : from;
+            eats = eats === undefined ? -1 : eats
+
             this.to = to;
-            if (eats !== undefined) {
-                this.eats = eats;
-            }
-            if (from === undefined) {
+            this.from = from;
+            this.eats = eats;
+
+            if (from < 0) {
                 this.type = ACTION_TYPES.DROP;
             } else {
-                this.from = from;
-                if (NEIGH[from].indexOf(to) > -1) {
-                    this.type = ACTION_TYPES.MOVE;
-                } else {
+                if (NEIGH[from].indexOf(this.to) < 0) {
                     this.type = ACTION_TYPES.JUMP;
+                } else {
+                    this.type = ACTION_TYPES.MOVE;
                 }
             }
         };
 
         toString() {
             let res = String.fromCodePoint(codeForA + this.to);
-            if (this.from !== undefined)
+            if (this.from >= 0)
                 res = String.fromCodePoint(codeForA + this.from).concat(res);
-            if (this.eats !== undefined)
+            if (this.eats >= 0)
                 res = res.concat('x', String.fromCodePoint(codeForA + this.eats));
             return res;
         };
@@ -234,9 +237,9 @@ Mills = (() => {
             const board = this.board;
 
             board[action.to] = CELLS.forPlayer(player);
-            if (action.from !== undefined)
+            if (action.from >= 0)
                 board[action.from] = CELLS.EMPTY;
-            if (action.eats !== undefined)
+            if (action.eats >= 0)
                 board[action.eats] = CELLS.EMPTY;
 
             this.actions.push(action);
@@ -249,12 +252,13 @@ Mills = (() => {
                     , blacksCanMove = false
                     , whitesCanMove = false;
                 for (let pos = 0; pos < posCount; pos++) {
-                    switch (board[pos]) {
+                    const cell = board[pos];
+                    switch (cell) {
                         case CELLS.BLACKS:
                             blacksCount++;
                             if (!blacksCanMove) {
-                                const neighbors = NEIGH[pos];
-                                for (let n = 0; n < neighbors.length; n++) {
+                                const neighbors = NEIGH[pos], nmax = neighbors.length;
+                                for (let n = 0; n < nmax; n++) {
                                     if (board[neighbors[n]] === CELLS.EMPTY) {
                                         blacksCanMove = true;
                                         break;
@@ -265,14 +269,16 @@ Mills = (() => {
                         case CELLS.WHITES:
                             whitesCount++;
                             if (!whitesCanMove) {
-                                const neighbors = NEIGH[pos];
-                                for (let n = 0; n < neighbors.length; n++) {
-                                    if (board[neighbors[n]] === CELLS.EMPTY) {
+                                const neighbors = NEIGH[pos], n2max = neighbors.length;
+                                for (let n2 = 0; n2 < n2max; n2++) {
+                                    if (board[neighbors[n2]] === CELLS.EMPTY) {
                                         whitesCanMove = true;
                                         break;
                                     }
                                 }
                             }
+                            break;
+                        default:
                             break;
                     }
                 }
@@ -297,7 +303,8 @@ Mills = (() => {
             }
 
             this.mills = new Uint8Array(posCount);
-            for (let i = 0; i < LINES.length; i++) {
+            const imax = LINES.length;
+            for (let i = 0; i < imax; i++) {
                 const line = LINES[i]
                     , a = line[0]
                     , b = line[1]
@@ -313,42 +320,49 @@ Mills = (() => {
         // An action eats iff it creates a line of 3 cells when there wasn't one before.
         _canEat(action, player) {
             const neededInLine = CELLS.forPlayer(player)
-                , lines = POS_TO_LINES[action.to];
-            for (let i = 0; i < lines.length; i++) {
-                const others = lines[i]
-                    , a = others[0]
-                    , b = others[1];
+                , lines = POS_TO_LINES[action.to]
+                , imax = lines.length;
+
+            for (let i = 0; i < imax; i++) {
+                const cells = lines[i]
+                    , a = cells[0]
+                    , b = cells[1];
+
                 if (a !== action.from &&
                     b !== action.from &&
                     this.board[a] === neededInLine &&
-                    this.board[b] === neededInLine)
+                    this.board[b] === neededInLine) {
                     return true;
+                }
             }
             return false;
         };
 
         // Returns a message explaining why a move is illegal, or undefined if it's legal
         _failureForAction(action, player) {
-            if (this.stage === STAGES.WHITES_WON || this.stage === STAGES.BLACKS_WON)
+            const stage = this.stage
+                , board = this.board;
+
+            if (stage === STAGES.WHITES_WON || stage === STAGES.BLACKS_WON)
                 return FAILURES.GAME_OVER;
 
-            if (this.stage === STAGES.PLACE) {
+            if (stage === STAGES.PLACE) {
                 if (action.type !== ACTION_TYPES.DROP)
                     return FAILURES.SHOULD_DROP;
             } else {
                 if (action.type === ACTION_TYPES.DROP)
                     return FAILURES.CANNOT_DROP;
-                else if (action.type === ACTION_TYPES.JUMP && this.stage === STAGES.MOVE)
+                else if (action.type === ACTION_TYPES.JUMP && stage === STAGES.MOVE)
                     return FAILURES.CANNOT_JUMP;
             }
-            if (this.board[action.to] !== CELLS.EMPTY) {
-                return FAILURES.DEST_IS_NOT_EMPTY;
+            if (board[action.to] !== CELLS.EMPTY) {
+                    return FAILURES.DEST_IS_NOT_EMPTY;
             }
 
             const otherPlayCell = CELLS.forOtherPlayer(player);
 
-            if (action.from !== undefined) {
-                switch (this.board[action.from]) {
+            if (action.from >= 0) {
+                switch (board[action.from]) {
                     case CELLS.EMPTY:
                         return FAILURES.SOURCE_IS_EMPTY;
                     case otherPlayCell:
@@ -357,13 +371,14 @@ Mills = (() => {
             }
 
             if (this._canEat(action, player)) {
-                if (action.eats === undefined)
+                if (action.eats < 0)
                     return FAILURES.MUST_EAT;
-                if (this.board[action.eats] !== otherPlayCell)
+                if (board[action.eats] !== otherPlayCell)
                     return FAILURES.MUST_EAT_FROM_OPPONENT;
                 if (this.mills[action.eats] !== CELLS.EMPTY) {
                     for (let pos = 0; pos < posCount; pos++) {
-                        if (this.board[pos] === otherPlayCell && this.mills[pos] === CELLS.EMPTY) {
+                        const cell = board[pos], mill = this.mills[pos];
+                        if (cell === otherPlayCell && mill === CELLS.EMPTY) {
                             return FAILURES.CANNOT_EAT_FROM_MILL;
                         }
                     }
@@ -389,12 +404,25 @@ Mills = (() => {
             return (ifNotOnlyMills.length > 0) ? ifNotOnlyMills : ifOnlyMills;
         };
 
+        _pushAllActionsFor(action, player, dest) {
+            if (this._canEat(action, player)) {
+                const actions = this._withEat(action, player)
+                    , count = actions.length;
+                for (let i = 0; i < count; i++) {
+                    dest.push(actions[i]);
+                }
+            } else {
+                dest.push(action);
+            }
+        }
+
         _finish(log, lambda, validate) {
             let res = this;
             while (res.stage !== STAGES.BLACKS_WON && res.stage !== STAGES.WHITES_WON) {
+                const action = lambda(res);
                 res = new Game(res, lambda(res), validate);
-                if (log) {
-                    console.log(res.toString());
+                if (res.failure) {
+                    break;
                 }
             }
             return res;
@@ -406,66 +434,44 @@ Mills = (() => {
             if (stage === STAGES.WHITES_WON || stage === STAGES.BLACKS_WON)
                 return [];
             if (stage === STAGES.PLACE) {
-                const placements = [];
+                const drops = [];
                 for (let pos = 0; pos < posCount; pos++) {
                     if (board[pos] === CELLS.EMPTY) {
-                        const action = new Action(pos);
-                        if (this._canEat(action, player)) {
-                            Array.prototype.push.apply(placements, this._withEat(action, player));
-                        } else {
-                            placements.push(action);
-                        }
+                        this._pushAllActionsFor(new Action(pos), player, drops);
                     }
                 }
-                return placements;
+                return drops;
             }
 
             // We'll move or jump, let's enumerate positions for various piece types at once
 
-            const ourCell = CELLS.forPlayer(this.player), ours = [], theirs = [], empty = [];
+            const ourCell = CELLS.forPlayer(this.player)
+                , res = [];
 
-            for (let pos = 0; pos < posCount; pos++) {
-                switch (board[pos]) {
-                    case CELLS.EMPTY:
-                        empty.push(pos);
-                        break;
-                    case ourCell:
-                        ours.push(pos);
-                        break;
-                    default:
-                        theirs.push(pos);
-                }
-            }
-
-            const res = [];
-
-            for (let i = 0; i < ours.length; i++) {
-                const from = ours[i];
-
-                if (this.stage === STAGES.JUMP) {
-                    for (let j = 0; j < empty.length; j++) {
-                        const jump = new Action(empty[j], from);
-                        if (this._canEat(jump, player)) {
-                            Array.prototype.push.apply(res, this._withEat(jump, player));
-                        } else {
-                            res.push(jump);
+            for (let from = 0; from < posCount; from++) {
+                const cell = board[from];
+                if (cell === ourCell) {
+                    if (this.stage === STAGES.JUMP) {
+                        for (let to = 0; to < posCount; to++) {
+                            const cell2 = board[to];
+                            if (cell2 === CELLS.EMPTY) {
+                                this._pushAllActionsFor(new Action(to, from), player, res);
+                            }
                         }
-                    }
-                } else {
-                    const neighbors = NEIGH[from];
-                    for (let j = 0; j < neighbors.length; j++) {
-                        const to = neighbors[j];
-                        if (board[to] === CELLS.EMPTY) {
-                            const move = new Action(to, from);
-                            if (this._canEat(move, player)) {
-                                Array.prototype.push.apply(res, this._withEat(move, player));
-                            } else {
-                                res.push(move);
+                    } else {
+                        const neighbors = NEIGH[from]
+                            , ncount = neighbors.length;
+                        for (let neigh = 0; neigh < ncount; neigh++) {
+                            const to = neighbors[neigh]
+                                , cell2 = board[to];
+                            if (cell2 === CELLS.EMPTY) {
+                                this._pushAllActionsFor(new Action(to, from), player, res);
                             }
                         }
                     }
                 }
             }
+
             return res;
         };
 
@@ -481,10 +487,10 @@ Mills = (() => {
 
         finishSemiRandomly(log) {
             return this._finish(log, (game) => {
-                const moves = game.possibleMoves();
-                for (let i = 0; i < moves.length; i++) {
+                const moves = game.possibleMoves(), imax = moves.length;
+                for (let i = 0; i < imax; i++) {
                     const move = moves[i];
-                    if (move.eats)
+                    if (move.eats >= 0)
                         return move;
                 }
                 return pickRandom(moves);
@@ -496,8 +502,8 @@ Mills = (() => {
         newGame: () => new Game(),
         quickLoad: (str) => {
             let game = new Game();
-            const parts = str.split(',');
-            for (let i = 0; i < parts.length; i++) {
+            const parts = str.split(','), imax = parts.length;
+            for (let i = 0; i < imax; i++) {
                 game = game.after(parts[i], false);
                 if (game.failure)
                     return game;
