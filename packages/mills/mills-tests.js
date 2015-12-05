@@ -1,6 +1,6 @@
 Tinytest.add('White start', (test) => {
     const game = Mills.newGame();
-    test.equal(game.stage, Mills.STAGES.PLACE);
+    test.equal(game.stage, Mills.STAGES.DROP);
     test.equal(game.player, Mills.PLAYERS.WHITES);
 });
 
