@@ -1,11 +1,12 @@
 "use strict";
 
-require('./mills.js');
+let m = require('./mills.b.js');
 
 function gameLengths(n) {
+    const newGame = m.Mills.newGame;
     let sum = 0;
     for (let i = 0; i < n; i++) {
-        sum += Mills.newGame().finishSemiRandomly(true).actions.length;
+        sum += newGame().finishSemiRandomly(true).actions.length;
     }
     return [sum / n, sum];
 }

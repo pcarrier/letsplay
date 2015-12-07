@@ -2,6 +2,8 @@
 
 set -ex
 
+make
+
 d8 \
   --trace-turbo \
   --turbo-types \

@@ -4,6 +4,8 @@ rm _hydrogen.cfg _code.asm
 
 set -ex
 
+make
+
 node \
   --trace-hydrogen \
   --trace-hydrogen-file=_hydrogen.cfg \
