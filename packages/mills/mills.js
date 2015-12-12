@@ -148,6 +148,8 @@ class Action {
                 this.type = ACTION_TYPES.MOVE;
             }
         }
+
+        Object.freeze(this);
     };
 
     toString() {
@@ -190,22 +192,22 @@ class Game {
             this.mills = new Uint8Array(POS_COUNT);
             this.failure = undefined;
         } else {
+            this.player = parent.player;
             this.stage = parent.stage;
             this.actions = parent.actions.slice();
             this.board = parent.board.slice();
             this.mills = parent.mills;
-            this.player = parent.player;
+            this.failure = parent.failure;
 
-            if (parent.failure !== undefined) {
-                this.failure = 'parent failed (skipping action)';
-            } else {
-                if (validate)
-                    this.failure = this._failureForAction(action);
-                if (!this.failure)
-                    this._applyAction(action, parent.player);
+            if (this.failure === undefined && validate) {
+                this.failure = this._failureForAction(action);
             }
-            this.player = (this.player === PLAYERS.WHITES) ? PLAYERS.BLACKS : PLAYERS.WHITES;
+
+            if (this.failure === undefined) {
+                this._applyAction(action, parent.player);
+            }
         }
+
         Object.freeze(this);
     };
 
@@ -323,6 +325,8 @@ class Game {
                 this.mills[c] = exp;
             }
         }
+
+        this.player = (this.player === PLAYERS.WHITES) ? PLAYERS.BLACKS : PLAYERS.WHITES;
     };
 
     // An action eats iff it creates a line of 3 cells when there wasn't one before.
@@ -420,7 +424,9 @@ class Game {
 
     _finish(validate, lambda) {
         let res = this;
-        while (res.stage !== STAGES.BLACKS_WON && res.stage !== STAGES.WHITES_WON) {
+        while (res.failure === undefined &&
+            res.stage !== STAGES.BLACKS_WON &&
+            res.stage !== STAGES.WHITES_WON) {
             res = new Game(res, lambda(res), validate);
         }
         return res;

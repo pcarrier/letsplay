@@ -1,9 +1,10 @@
 "use strict";
 
+var exports = {};
 load('./mills.b.js');
 
 function gameLengths(n) {
-	const newGame = Mills.newGame;
+    const newGame = Mills.newGame;
     let sum = 0;
     for (let i = 0; i < n; i++) {
         sum += newGame().finishSemiRandomly(true).actions.length;
